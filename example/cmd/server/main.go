@@ -25,6 +25,7 @@ import (
 	pb "github.com/joiman/openshift-golang-template/example/pkg/helloworld"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"time"
 )
@@ -48,7 +49,25 @@ func StartServer() {
 }
 
 func main() {
-	createServer()
+
+	var opts []grpc.ServerOption
+	creds, err := credentials.NewServerTLSFromFile("server1.pem", "server1.key")
+	if err != nil {
+		log.Fatalf("Failed to generate credentials %v", err)
+	}
+	opts = []grpc.ServerOption{grpc.Creds(creds)}
+
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer(opts...)
+	pb.RegisterGreeterServer(s, &server{})
+	// Register reflection service on gRPC server.
+	reflection.Register(s)
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
 
 func createServer() {
